@@ -124,7 +124,7 @@ def queue_worker():
         try:
             #if time() - last_command_time > time_between_commands:
             #last_command_time = time()
-            if time() - lt_info > get_info_diff:
+            if time() - lt_info > get_info_diff and not is_slpeeping_time():
                 lt_info = time()
                 get_info_diff = random.randint(600, 1200)
                 send_msg(bot_username, orders['hero'])
