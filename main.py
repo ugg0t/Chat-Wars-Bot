@@ -17,8 +17,12 @@ bot_username = 'ChatWarsBot'
 admin_username = 'AlexanderSvetly'
 # username бота и/или человека, которые будут отправлять приказы
 order_usernames = 'RedStatBot'
+# username бота и/или человека которому отправлять репорты о битвах
+report_username = 'AlexanderSvetly'
 # имя замка
 castle_name = 'red'
+# бот только принимает приказы от admin_username
+sleeping_hours = [0, 8]
 
 # путь к сокет файлу
 socket_path = ''
@@ -27,21 +31,21 @@ host = 'localhost'
 # порт по которому сшулать
 port = 1338
 
-opts, args = getopt(sys.argv[1:], 'a:o:c:s:h:p', ['admin=', 'order=', 'castle=', 'socket=', 'host=', 'port='])
+# opts, args = getopt(sys.argv[1:], 'a:o:c:s:h:p', ['admin=', 'order=', 'castle=', 'socket=', 'host=', 'port='])
 
-for opt, arg in opts:
-    if opt in ('-a', '--admin'):
-        admin_username = arg
-    elif opt in ('-o', '--order'):
-        order_usernames = arg.split(',')
-    elif opt in ('-c', '--castle'):
-        castle_name = arg
-    elif opt in ('-s', '--socket'):
-        socket_path = arg
-    elif opt in ('-h', '--host'):
-        host = arg
-    elif opt in ('-p', '--port'):
-        port = int(arg)
+# for opt, arg in opts:
+#     if opt in ('-a', '--admin'):
+#         admin_username = arg
+#     elif opt in ('-o', '--order'):
+#         order_usernames = arg.split(',')
+#     elif opt in ('-c', '--castle'):
+#         castle_name = arg
+#     elif opt in ('-s', '--socket'):
+#         socket_path = arg
+#     elif opt in ('-h', '--host'):
+#         host = arg
+#     elif opt in ('-p', '--port'):
+#         port = int(arg)
 
 orders = {
     'red':    '🇮🇲',
@@ -85,12 +89,21 @@ last_arena_visit = 0
 get_info_diff = 360
 hero_message_id = ''
 
-bot_enabled = True
-arena_enabled = True
-forest_enabled = True
+bot_enabled         = True
+arena_enabled       = True
+forest_enabled      = False
+cave_enabled        = True
+korovan_enabled     = False
 korovan_def_enabled = True
-order_enabled = True
-auto_def_enabled = True
+order_enabled       = True
+auto_def_enabled    = True
+auto_level_up       = True
+
+auto_buy_enabled    = True
+auto_by_gold_limit  = 103
+auto_by_item        = '/buy_dagger2'
+
+auto_report_enable = True
 
 
 @coroutine
@@ -120,11 +133,15 @@ def queue_worker():
             if len(action_list):
                 log('Отправляем ' + action_list[0])
                 send_msg(bot_username, action_list.popleft())
-            sleep_time = random.randint(2, 8)
+            sleep_time = random.randint(2, 10)
             sleep(sleep_time)
         except Exception as err:
             log('Ошибка очереди: {0}'.format(err))
 
+def is_slpeeping_time() -> bool:
+    global sleeping_hours
+    cur_hour = datetime.datetime.now().hour
+    return sleeping_hours[0] <= cur_hour and cur_hour <= sleeping_hours[1]
 
 def parse_text(text, username, message_id):
     global last_arena_visit
@@ -141,18 +158,22 @@ def parse_text(text, username, message_id):
     global arena_enabled
     global auto_def_enabled
 
-    if !bot_enabled:
+    global auto_buy_enabled
+    global auto_by_gold_limit
+    global auto_by_item
+
+    if not bot_enabled:
         return
 
-    if username == bot_username:
+    if username == bot_username and not is_slpeeping_time():
         log('Получили сообщение от бота. Проверяем условия')
 
         # TO DO: level up
-        if auto_level_up and text.find('/level_up'):
+        if auto_level_up and text.find('/level_up') != -1:
             action_list.append('+1 ⚔Атака')
 
         # защита корована
-        if korovan_def_enabled and text.find(' /go') != -1:
+        if korovan_def_enabled and text.find('/go') != -1:
             action_list.append(orders['def_korovan'])
 
         if (orders['def_korovan'] in action_list) and (time() - current_order['time'] < 3600):
@@ -166,7 +187,7 @@ def parse_text(text, username, message_id):
                     # прекращаем все действия
                     state = re.search('Состояние:\\n(.*)$', text)
                     if auto_def_enabled and time() - current_order['time'] > 3600:
-                        update_order(castle_name)
+                        update_order(orders[castle_name])
                     return
             log('Времени достаточно')
             # теперь узнаем, сколько у нас выносливости и золота
@@ -174,6 +195,8 @@ def parse_text(text, username, message_id):
             gold = int(re.search('💰([0-9]+)', text).group(1))
             stamina = int(re.search('Выносливость: ([0-9]+)', text).group(1))
             log('Золото: {0}, выносливость: {1}'.format(gold, stamina))
+            if auto_buy_enabled and gold >= auto_by_gold_limit:
+                action_list.append(auto_by_item)
             if forest_enabled and stamina > 0 and orders['forest'] not in action_list:
                 action_list.append(orders['forest'])
             elif cave_enabled and stamina > 1 and orders['cave'] not in action_list:
@@ -209,7 +232,7 @@ def parse_text(text, username, message_id):
             elif text.find(symbols['mountain']) != -1:
                 update_order(orders['mountain_fort'])
             elif text.find(symbols['defence']) != -1:
-                update_order(castle_name)
+                update_order(orders[castle_name])
 
             # send_msg(admin_username, 'Получили команду ' + current_order['order'] + ' от ' + username)
 
@@ -329,7 +352,7 @@ def parse_text(text, username, message_id):
                     'Приказы включены: {6}',
                     'Авто деф включен: {7}',
                     'Авто levelup включен: {8}'
-                ]).format(bot_enabled, arena_enabled, forest_enabled, cave_enabled, korovan_enabled, def_korovan_enabled, order_enabled, auto_def_enabled, auto_level_up))
+                ]).format(bot_enabled, arena_enabled, forest_enabled, cave_enabled, korovan_enabled, korovan_def_enabled, order_enabled, auto_def_enabled, auto_level_up))
 
             # Информация о герое
             if text == '#hero':
@@ -366,7 +389,7 @@ def parse_text(text, username, message_id):
                     send_msg(admin_username, 'Команда ' + command + ' не распознана')
 
 
-def _defsend_msg(to, message):
+def send_msg(to, message):
     sender.send_msg('@' + to, message)
 
 
@@ -377,7 +400,7 @@ def fwd(to, message_id):
 def update_order(order):
     current_order['order'] = order
     current_order['time'] = time()
-    if order == castle_name:
+    if order == orders[castle_name]:
         action_list.append(orders['defence'])
     else:
         action_list.append(orders['attack'])
