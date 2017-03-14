@@ -121,6 +121,7 @@ def work_with_message(receiver):
 def queue_worker():
     global get_info_diff
     lt_info = 0
+    print(lt_info)
     while True:
         try:
             #if time() - last_command_time > time_between_commands:
@@ -134,7 +135,8 @@ def queue_worker():
             if len(action_list):
                 log('Отправляем ' + action_list[0])
                 send_msg(bot_username, action_list.popleft())
-            sleep_time = random.randint(60, 120)
+            # не ставить большое, иначе арена не будет работать
+            sleep_time = random.randint(2, 6)
             sleep(sleep_time)
         except Exception as err:
             log('Ошибка очереди: {0}'.format(err))
@@ -231,36 +233,36 @@ def parse_text(text, username, message_id):
             if text.find(orders['red']) != -1:
                 update_order(orders['red'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
             elif text.find(orders['black']) != -1:
                 update_order(orders['black'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
             elif text.find(orders['white']) != -1:
                 update_order(orders['white'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
             elif text.find(orders['yellow']) != -1:
                 update_order(orders['yellow'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
             elif text.find(orders['blue']) != -1:
                 update_order(orders['blue'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
 
             elif text.find(symbols['forest']) != -1:
                 update_order(orders['forest_fort'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
             elif text.find(symbols['mountain']) != -1:
                 update_order(orders['mountain_fort'])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
             elif text.find(symbols['defence']) != -1:
                 update_order(orders[castle_name])
                 need_order = True
-                time_for_order = time() + 60*15
+                time_for_order = time() + 3600
 
             # need_order = true
             # time_for_order = time() + 60*15
