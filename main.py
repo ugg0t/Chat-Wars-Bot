@@ -86,7 +86,7 @@ sender = Sender(sock=socket_path) if socket_path else Sender(host=host, port=por
 action_list = deque([])
 log_list = deque([], maxlen=30)
 last_arena_visit = 0
-get_info_diff = 360
+get_info_diff = 5000
 hero_message_id = ''
 
 bot_enabled         = True
@@ -103,7 +103,8 @@ auto_buy_enabled    = True
 auto_by_gold_limit  = 103
 auto_by_item        = '/buy_dagger2'
 
-auto_report_enable = True
+need_order          = False
+time_for_order      = 0
 
 
 @coroutine
@@ -126,14 +127,14 @@ def queue_worker():
             #last_command_time = time()
             if time() - lt_info > get_info_diff and not is_slpeeping_time():
                 lt_info = time()
-                get_info_diff = random.randint(600, 1200)
+                get_info_diff = random.randint(3600, 5000)
                 send_msg(bot_username, orders['hero'])
                 continue
 
             if len(action_list):
                 log('Отправляем ' + action_list[0])
                 send_msg(bot_username, action_list.popleft())
-            sleep_time = random.randint(2, 10)
+            sleep_time = random.randint(60, 120)
             sleep(sleep_time)
         except Exception as err:
             log('Ошибка очереди: {0}'.format(err))
@@ -162,11 +163,22 @@ def parse_text(text, username, message_id):
     global auto_by_gold_limit
     global auto_by_item
 
+    global need_order
+    global time_for_order
+    global report_username
+
     if not bot_enabled:
         return
 
+    if need_order and time() > time_for_order:
+        action_list.append('/report')
+        need_order = False
+
     if username == bot_username and not is_slpeeping_time():
         log('Получили сообщение от бота. Проверяем условия')
+
+        if text.find('Твои результаты в бою') != -1:
+            fwd(report_username, message_id)
 
         # TO DO: level up
         if auto_level_up and text.find('/level_up') != -1:
@@ -218,21 +230,40 @@ def parse_text(text, username, message_id):
         if order_enabled and username in order_usernames:
             if text.find(orders['red']) != -1:
                 update_order(orders['red'])
+                need_order = True
+                time_for_order = time() + 60*15
             elif text.find(orders['black']) != -1:
                 update_order(orders['black'])
+                need_order = True
+                time_for_order = time() + 60*15
             elif text.find(orders['white']) != -1:
                 update_order(orders['white'])
+                need_order = True
+                time_for_order = time() + 60*15
             elif text.find(orders['yellow']) != -1:
                 update_order(orders['yellow'])
+                need_order = True
+                time_for_order = time() + 60*15
             elif text.find(orders['blue']) != -1:
                 update_order(orders['blue'])
+                need_order = True
+                time_for_order = time() + 60*15
 
             elif text.find(symbols['forest']) != -1:
                 update_order(orders['forest_fort'])
+                need_order = True
+                time_for_order = time() + 60*15
             elif text.find(symbols['mountain']) != -1:
                 update_order(orders['mountain_fort'])
+                need_order = True
+                time_for_order = time() + 60*15
             elif text.find(symbols['defence']) != -1:
                 update_order(orders[castle_name])
+                need_order = True
+                time_for_order = time() + 60*15
+
+            # need_order = true
+            # time_for_order = time() + 60*15
 
             # send_msg(admin_username, 'Получили команду ' + current_order['order'] + ' от ' + username)
 
