@@ -128,6 +128,8 @@ def queue_worker():
             #last_command_time = time()
             if time() - lt_info > get_info_diff and not is_slpeeping_time():
                 lt_info = time()
+                print('flag3')
+                print(action_list)
                 get_info_diff = random.randint(3600, 5000)
                 send_msg(bot_username, orders['hero'])
                 continue
@@ -136,7 +138,7 @@ def queue_worker():
                 log('Отправляем ' + action_list[0])
                 send_msg(bot_username, action_list.popleft())
             # не ставить большое, иначе арена не будет работать
-            sleep_time = random.randint(2, 6)
+            sleep_time = random.randint(2, 8)
             sleep(sleep_time)
         except Exception as err:
             log('Ошибка очереди: {0}'.format(err))
@@ -218,6 +220,7 @@ def parse_text(text, username, message_id):
             elif korovan_enabled and stamina > 1 and orders['korovan'] not in action_list:
                 action_list.append(orders['korovan'])
             elif (arena_enabled and gold >= 5) and (orders['searching_opponent'] not in action_list) and (time() - last_arena_visit > 3600):
+                print('flag1. action_list.append(orders[searching_opponent])')
                 action_list.append(orders['searching_opponent'])
 
         elif arena_enabled and text.find('выбери точку атаки и точку защиты') != -1:
@@ -227,6 +230,7 @@ def parse_text(text, username, message_id):
             log('Атака: {0}, Защита: {1}'.format(attack_chosen, defence_chosen))
             action_list.append(attack_chosen)
             action_list.append(defence_chosen)
+            print('flag2. action_list.append(attack_chosen)')
 
     else:
         if order_enabled and username in order_usernames:
